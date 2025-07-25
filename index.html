@@ -25,7 +25,7 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" onerror="alert('Gagal memuatkan pustaka QR Code. Sila semak sambungan internet atau cuba kemudian.');"></script>
+  <script src="js/qrcode.min.js" onerror="alert('Gagal memuatkan pustaka QR Code. Sila pastikan fail js/qrcode.min.js wujud di direktori projek.');"></script>
 </head>
 <body>
   <h1>Modul Jadual Keperluan Ruang (SOA)</h1>
@@ -289,7 +289,7 @@
 
     function generateQRCode() {
       if (typeof QRCode === 'undefined') {
-        alert('Pustaka QR Code tidak dimuat. Sila semak sambungan internet atau cuba muat semula halaman.');
+        alert('Pustaka QR Code tidak dimuat. Sila pastikan fail js/qrcode.min.js wujud di direktori projek atau semak sambungan internet.');
         return;
       }
       const soaDataJson = getSoaDataForQR();
