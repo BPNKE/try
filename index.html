@@ -25,7 +25,7 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" onerror="alert('Gagal memuatkan pustaka QR Code. Sila semak sambungan internet atau cuba kemudian.');"></script>
 </head>
 <body>
   <h1>Modul Jadual Keperluan Ruang (SOA)</h1>
@@ -173,7 +173,7 @@
       if (currentMainSection!=='' && !currentMainSection.includes("4.0")) {
         tableBody.innerHTML += `
           <tr class='subtotal'>
-            <td colspan="4"><strong>Jumlah ${currentMainSection}</strong></td ethylene
+            <td colspan="4"><strong>Jumlah ${currentMainSection}</strong></td>
             <td>${sectionTotal.toFixed(2)}</td>
           </tr>`;
         nfa += sectionTotal;
@@ -288,10 +288,17 @@
     }
 
     function generateQRCode() {
+      if (typeof QRCode === 'undefined') {
+        alert('Pustaka QR Code tidak dimuat. Sila semak sambungan internet atau cuba muat semula halaman.');
+        return;
+      }
       const soaDataJson = getSoaDataForQR();
       const canvas = document.getElementById('qrcode');
       QRCode.toCanvas(canvas, soaDataJson, { width: 200 }, function (error) {
-        if (error) console.error('Error generating QR code:', error);
+        if (error) {
+          console.error('Error generating QR code:', error);
+          alert('Gagal menjana kod QR. Sila cuba lagi.');
+        }
       });
     }
   </script>
