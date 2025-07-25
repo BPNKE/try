@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Template SOA Sekolah Rendah</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; margin: auto; max-width: 960px; box-sizing: border-box; }
+    h1 { text-align: center; color: #004080; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #999; padding: 8px; text-align: left; }
+    .subheader { background-color: #f2f2f2; font-weight: bold; }
+    .subcategory { padding-left: 20px; }
+    .subtotal { background-color: #e6f2ff; font-weight: bold; }
+    #video { width: 100%; max-width: 400px; margin: 20px 0; }
+    .action-buttons { margin-top: 20px; }
+    .action-buttons button { padding: 8px 16px; background: #004080; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    .action-buttons button:hover { background: #002b57; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</head>
+<body>
+  <h1>Template Jadual Keperluan Ruang (SOA)</h1>
+
+  <div class="action-buttons">
+    <button onclick="startScanner()">Start QR Scanner</button>
+    <input type="file" id="qrImageInput" accept="image/*" onchange="scanQRFromImage()">
+  </div>
+
+  <video id="video" autoplay playsinline style="display: none;"></video>
+  <canvas id="canvas" style="display: none;"></canvas>
+
+  <h2 id="soaTitle" style="text-align:center; color:#004080;">SOA Sekolah Rendah</h2>
+  <table>
+    <thead>
+      <tr><th>Bil.</th><th>Jenis Ruang</th><th>Kap.</th><th>Unit</th><th>Luas (m²)</th></tr>
+    </thead>
+    <tbody id="soaSekolahTable"></tbody>
+    <tfoot>
+      <tr><td colspan="4"><strong>Jumlah NFA</strong></td><td id="jumlahNFA">0.00</td></tr>
+      <tr><td colspan="4"><strong>Jumlah Sirkulasi</strong></td><td id="jumlahSirkulasi">0.00</td></tr>
+      <tr><td colspan="4"><strong>Jumlah Servis</strong></td><td id="jumlahServis">0.00</td></tr>
+      <tr><td colspan="4"><strong>Jumlah Keseluruhan SOA</strong></td><td id="jumlahGFA">0.00</td></tr>
+    </tfoot>
+  </table>
+
+  <script>
+    let stream = null;
+
+    function startScanner() {
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function (mediaStream) {
+          stream = mediaStream;
+          video.srcObject = stream;
+          video.style.display = 'block';
+          video.play();
+          requestAnimationFrame(tick);
+        })
+        .catch(function (err) {
+          console.error('Error accessing camera:', err);
+          alert('Tidak dapat mengakses kamera. Sila gunakan input imej.');
+        });
+
+      function tick() {
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.height = video.videoHeight;
+          canvas.width = video.videoWidth;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) {
+            processQRData(code.data);
+            stopScanner();
+          } else {
+            requestAnimationFrame(tick);
+          }
+        } else {
+          requestAnimationFrame(tick);
+        }
+      }
+    }
+
+    function scanQRFromImage() {
+      const input = document.getElementById('qrImageInput');
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          const canvas = document.getElementById('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) {
+            processQRData(code.data);
+          } else {
+            alert('Tiada kod QR dikesan dalam imej.');
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function stopScanner() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      document.getElementById('video').style.display = 'none';
+    }
+
+    function processQRData(qrData) {
+      try {
+        const soaConfig = JSON.parse(qrData);
+        populateTableFromQR(soaConfig);
+      } catch (err) {
+        console.error('Error parsing QR data:', err);
+        alert('Data QR tidak sah.');
+      }
+    }
+
+    function populateTableFromQR(soaConfig) {
+      const { bd, calcMode, customPercent, tableData, totals } = soaConfig;
+      const tableBody = document.getElementById('soaSekolahTable');
+      tableBody.innerHTML = '';
+      document.getElementById('soaTitle').textContent = `SOA Sekolah Rendah ${bd}BD`;
+
+      let sectionTotal = 0;
+      let currentMainSection = '';
+      let isExcludedSection = false;
+
+      tableData.forEach(row => {
+        const [bil, jenisRuang, kap, unit, luas] = row;
+
+        if (bil === null) {
+          isExcludedSection = jenisRuang.includes("4.0 KEMUDAHAN-KEMUDAHAN LAIN TIDAK TERMASUK DALAM KELUASAN RUANG BANGUNAN");
+          if (/^[1-6]\.0/.test(jenisRuang.split(' ')[0])) {
+            if (currentMainSection !== '' && !currentMainSection.includes("4.0")) {
+              tableBody.innerHTML += `
+                <tr class='subtotal'>
+                  <td colspan="4"><strong>Jumlah ${currentMainSection}</strong></td>
+                  <td>${sectionTotal.toFixed(2)}</td>
+                </tr>`;
+              sectionTotal = 0;
+            }
+            currentMainSection = jenisRuang;
+            tableBody.innerHTML += `<tr class='subheader'><td colspan='5'>${jenisRuang}</td></tr>`;
+          } else {
+            tableBody.innerHTML += `<tr class='subheader'><td colspan='5'>${jenisRuang}</td></tr>`;
+          }
+        } else {
+          const indentLevel = bil.split('.').length - 1 + (bil.includes('.a') || bil.includes('.b') || bil.includes('.c') ? 1 : 0);
+          const indentStyle = indentLevel > 0 ? `padding-left:${indentLevel * 20}px` : '';
+          tableBody.innerHTML += `
+            <tr class='subcategory'>
+              <td>${bil || '-'}</td>
+              <td style="${indentStyle}">${jenisRuang}</td>
+              <td>${kap !== null ? kap : '-'}</td>
+              <td>${unit !== null ? unit : '-'}</td>
+              <td>${(luas || 0).toFixed(2)}</td>
+            </tr>`;
+          if (!isExcludedSection && luas && !jenisRuang.includes("TIDAK TERMASUK")) {
+            sectionTotal += luas;
+          }
+        }
+      });
+
+      if (currentMainSection !== '' && !currentMainSection.includes("4.0")) {
+        tableBody.innerHTML += `
+          <tr class='subtotal'>
+            <td colspan="4"><strong>Jumlah ${currentMainSection}</strong></td>
+            <td>${sectionTotal.toFixed(2)}</td>
+          </tr>`;
+      }
+
+      // Update footer labels based on calcMode
+      document.querySelector('tfoot tr:nth-child(2) td:first-child').innerHTML =
+        calcMode === 'default' ? '<strong>Jumlah Sirkulasi (25%)</strong>' : `<strong>Jumlah Tambahan (${customPercent.toFixed(0)}%)</strong>`;
+      document.querySelector('tfoot tr:nth-child(3) td:first-child').innerHTML =
+        calcMode === 'default' ? '<strong>Jumlah Servis (10%)</strong>' : '<strong></strong>';
+
+      // Update totals
+      document.getElementById('jumlahNFA').textContent = totals.nfa.toFixed(2);
+      document.getElementById('jumlahSirkulasi').textContent = totals.sirkulasi.toFixed(2);
+      document.getElementById('jumlahServis').textContent = totals.servis.toFixed(2);
+      document.getElementById('jumlahGFA').textContent = totals.gfa.toFixed(2);
+    }
+  </script>
+</body>
+</html>
