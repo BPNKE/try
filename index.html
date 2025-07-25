@@ -25,7 +25,7 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <script src="qrcode.min.js" onerror="alert('Gagal memuatkan pustaka QR Code. Sila pastikan fail js/qrcode.min.js wujud di direktori projek.');"></script>
+  <script src="js/qrcode.min.js" onerror="alert('Gagal memuatkan pustaka QR Code. Sila pastikan fail js/qrcode.min.js wujud di direktori projek.');"></script>
 </head>
 <body>
   <h1>Modul Jadual Keperluan Ruang (SOA)</h1>
@@ -289,17 +289,35 @@
 
     function generateQRCode() {
       if (typeof QRCode === 'undefined') {
-        alert('Pustaka QR Code tidak dimuat. Sila pastikan fail js/qrcode.min.js wujud di direktori projek atau semak sambungan internet.');
+        alert('Pustaka QR Code tidak dimuat. Sila pastikan fail js/qrcode.min.js wujud di direktori projek.');
         return;
       }
+
       const soaDataJson = getSoaDataForQR();
       const canvas = document.getElementById('qrcode');
-      QRCode.toCanvas(canvas, soaDataJson, { width: 200 }, function (error) {
-        if (error) {
-          console.error('Error generating QR code:', error);
-          alert('Gagal menjana kod QR. Sila cuba lagi.');
+
+      try {
+        // Try QRCode.toCanvas (qrcode@1.5.3)
+        if (typeof QRCode.toCanvas === 'function') {
+          QRCode.toCanvas(canvas, soaDataJson, { width: 200 }, function (error) {
+            if (error) {
+              console.error('Error generating QR code:', error);
+              alert('Gagal menjana kod QR. Sila cuba lagi.');
+            }
+          });
+        } else {
+          // Fallback to new QRCode (older qrcodejs versions)
+          canvas.innerHTML = ''; // Clear canvas to prevent duplicate QR codes
+          new QRCode(canvas, {
+            text: soaDataJson,
+            width: 200,
+            height: 200
+          });
         }
-      });
+      } catch (error) {
+        console.error('Error generating QR code:', error);
+        alert('Gagal menjana kod QR. Sila pastikan pustaka QR Code serasi dan cuba lagi.');
+      }
     }
   </script>
 </body>
